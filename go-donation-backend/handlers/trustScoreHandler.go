@@ -1,26 +1,23 @@
 package handlers
 
 import (
-	"encoding/json"
-	"my-go-backend/services"
+	"github.com/gin-gonic/gin"
+	"go-donation-backend/services"
 	"net/http"
-	"my-go-backend/models"
+	"go-donation-backend/models"
 )
 
 // TrustScoreHandler handles the POST request to calculate trust score
-func TrustScoreHandler(w http.ResponseWriter, r *http.Request) {
+func TrustScoreHandler(c *gin.Context) {
 	var ts models.TrustScore
 
-	// Decode incoming JSON request body into the TrustScore model
-	if err := json.NewDecoder(r.Body).Decode(&ts); err != nil {
-		http.Error(w, "Invalid input", http.StatusBadRequest)
+
+	if err := c.ShouldBindJSON(&ts); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
 		return
 	}
 
-	// Calculate trust score using the service function
 	score := services.CalculateTrustScore(ts)
 
-	// Send the calculated trust score as JSON response
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]float64{"trust_score": score})
+	c.JSON(http.StatusOK, gin.H{"trust_score": score})
 }

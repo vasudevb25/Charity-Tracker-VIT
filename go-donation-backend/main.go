@@ -271,7 +271,6 @@ func main() {
 		authRoutes.POST("/login", authHandler.Login)
 	}
 
-	// Public Routes (e.g., for general viewing by anyone, including unauthenticated users)
 	public := router.Group("/api/v1")
 	{
 		// Organizations (viewing public organization profiles)
@@ -295,66 +294,51 @@ func main() {
 		// Donation certificates (public viewing, if ID is known)
 		public.GET("/certificates/:id", certificateHandler.GetDonationCertificate)
 		public.GET("/certificates/donation/:donationID", certificateHandler.GetCertificateByDonationID)
-		public.GET("/trust-score", handlers.TrustScoreHandler) 
+
 	}
 
-	// Authenticated Routes - require a valid JWT
 	authenticatedGroup := router.Group("/api/v1")
 	authenticatedGroup.Use(middleware.AuthMiddleware())
 	{
-		// Donor-specific Routes
 		donorAuth := authenticatedGroup.Group("/donor")
 		{
-			// Note: The middleware.DonorRequired() might need to check c.Param("id") instead of c.Param("donorID")
-			// if you are using :id in the path. Please adjust your middleware/handlers accordingly.
 			donorAuth.POST("/donate", donationHandler.CreateDonation)
 			donorAuth.GET("/:id/donations", middleware.DonorRequired(), donationHandler.GetDonationsByDonor)                // <--- Corrected to :id
 			donorAuth.GET("/:id/achievements", middleware.DonorRequired(), gamificationHandler.GetDonorAchievements)        // <--- Corrected to :id
 			donorAuth.GET("/:id/transaction-history", middleware.DonorRequired(), reportHandler.GetDonorTransactionHistory) // <--- Corrected to :id
 		}
 
-		// Organization-specific Routes (Requires Organization role and matching OrganizationID if present in path)
 		organizationAuth := authenticatedGroup.Group("/organization")
 		{
-			// All routes here should expect the organization ID as ':id'
 			organizationAuth.PUT("/:id", middleware.OrganizationRequired(), organizationHandler.UpdateOrganization)
 			organizationAuth.DELETE("/:id", middleware.OrganizationRequired(), organizationHandler.DeleteOrganization)
 
-			// Expenditures
 			organizationAuth.POST("/:id/expenditures", middleware.OrganizationRequired(), expenditureHandler.AddExpenditure)               // <--- Corrected to :id
 			organizationAuth.GET("/:id/expenditures", middleware.OrganizationRequired(), expenditureHandler.GetExpendituresByOrganization) // <--- Corrected to :id
 
-			// Project Updates
 			organizationAuth.POST("/:id/project-updates", middleware.OrganizationRequired(), projectUpdateHandler.CreateProjectUpdate) // <--- Corrected to :id
 			organizationAuth.PUT("/project-updates/:id", middleware.OrganizationRequired(), projectUpdateHandler.UpdateProjectUpdate)
 			organizationAuth.DELETE("/project-updates/:id", middleware.OrganizationRequired(), projectUpdateHandler.DeleteProjectUpdate)
 
-			// Collaborations (Organizations can create/manage their collaborations)
 			organizationAuth.POST("/collaborations", middleware.OrganizationRequired(), collaborationHandler.CreateCollaboration)
 			organizationAuth.PUT("/collaborations/:id", middleware.OrganizationRequired(), collaborationHandler.UpdateCollaboration)
 			organizationAuth.DELETE("/collaborations/:id", middleware.OrganizationRequired(), collaborationHandler.DeleteCollaboration)
 			organizationAuth.GET("/:id/collaborations", middleware.OrganizationRequired(), collaborationHandler.GetCollaborationsByOrganization) // <--- Corrected to :id
 
-			// Organization Audit Report
 			organizationAuth.GET("/:id/audit-report", middleware.OrganizationRequired(), reportHandler.GetOrganizationAuditReport) // <--- Corrected to :id
 		}
 
-		// Admin can manage any Organization (no specific OrganizationID match required in middleware)
 		adminOrganizationManagement := authenticatedGroup.Group("/admin/organizations").Use(middleware.AdminRequired())
 		{
 			adminOrganizationManagement.POST("", organizationHandler.CreateOrganization)
 			adminOrganizationManagement.PUT("/:id", organizationHandler.UpdateOrganization)
 			adminOrganizationManagement.DELETE("/:id", organizationHandler.DeleteOrganization)
+			adminOrganizationManagement.POST("/trust-score", handlers.TrustScoreHandler)
 		}
 
-		// Admin Routes (for system-level management) - Example for other admin routes
-		// adminAuth := authenticatedGroup.Group("/admin").Use(middleware.AdminRequired())
-		// {
-		// 	// Add other admin-specific management routes as needed, e.g., user management, etc.
-		// }
+
 	}
 
-	// Run the server
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080" // Default port

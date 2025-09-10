@@ -1,7 +1,7 @@
 package services
 
 import (
-	"my-go-backend/models"
+	"go-donation-backend/models"
 )
 
 // CalculateTrustScore calculates the overall trust score
