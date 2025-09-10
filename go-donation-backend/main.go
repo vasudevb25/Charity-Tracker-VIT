@@ -295,7 +295,7 @@ func main() {
 		// Donation certificates (public viewing, if ID is known)
 		public.GET("/certificates/:id", certificateHandler.GetDonationCertificate)
 		public.GET("/certificates/donation/:donationID", certificateHandler.GetCertificateByDonationID)
-
+		public.GET("/trust-score", handlers.TrustScoreHandler) 
 	}
 
 	// Authenticated Routes - require a valid JWT
