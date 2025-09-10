@@ -12,16 +12,16 @@ import (
 
 // Claims defines the JWT claims for a user
 type Claims struct {
-	UserID  primitive.ObjectID `json:"user_id"`
-	Email   string             `json:"email"`
-	Role    string             `json:"role"`
-	NGOID   primitive.ObjectID `json:"ngo_id,omitempty"`
-	DonorID string             `json:"donor_id,omitempty"`
+	UserID         primitive.ObjectID `json:"user_id"`
+	Email          string             `json:"email"`
+	Role           string             `json:"role"`
+	OrganizationID primitive.ObjectID `json:"organization_id,omitempty"` // <--- Updated to OrganizationID
+	DonorID        string             `json:"donor_id,omitempty"`
 	jwt.RegisteredClaims
 }
 
 // GenerateToken creates a new JWT token for the given user claims
-func GenerateToken(userID primitive.ObjectID, email string, role string, ngoID primitive.ObjectID, donorID string) (string, error) {
+func GenerateToken(userID primitive.ObjectID, email string, role string, organizationID primitive.ObjectID, donorID string) (string, error) { // <--- Updated parameter
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
 		jwtSecret = "supersecretjwtkey" // Fallback for dev, DO NOT USE IN PROD
@@ -30,11 +30,11 @@ func GenerateToken(userID primitive.ObjectID, email string, role string, ngoID p
 
 	expirationTime := time.Now().Add(24 * time.Hour) // Token valid for 24 hours
 	claims := &Claims{
-		UserID:  userID,
-		Email:   email,
-		Role:    role,
-		NGOID:   ngoID,
-		DonorID: donorID,
+		UserID:         userID,
+		Email:          email,
+		Role:           role,
+		OrganizationID: organizationID, // <--- Updated field
+		DonorID:        donorID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

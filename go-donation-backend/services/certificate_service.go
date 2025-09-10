@@ -30,11 +30,11 @@ func (s *CertificateService) GenerateCertificate(ctx context.Context, donation *
 		ID:             utils.GenerateObjectID(),
 		DonationID:     donation.ID,
 		DonorID:        donation.DonorID,
-		NGOID:          donation.NGOID,
+		OrganizationID: donation.OrganizationID,                                                            // <--- Updated field
 		CertificateURL: fmt.Sprintf("https://example.com/certificates/%s", utils.GenerateObjectID().Hex()), // Placeholder URL
 		IssueDate:      utils.GetCurrentTime(),
 		Metadata: map[string]string{
-			"ImpactStatement": fmt.Sprintf("Donation of %.2f %s contributed to cause by NGO %s", donation.Amount, donation.Currency, donation.NGOID.Hex()),
+			"ImpactStatement": fmt.Sprintf("Donation of %.2f %s contributed to cause by Organization %s", donation.Amount, donation.Currency, donation.OrganizationID.Hex()),
 		},
 	}
 

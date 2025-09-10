@@ -66,9 +66,9 @@ func AdminRequired() gin.HandlerFunc {
 	}
 }
 
-// NGORequired checks if the authenticated user has the 'ngo' role
-// It also checks if the 'ngoID' path parameter matches the user's NGOID.
-func NGORequired() gin.HandlerFunc {
+// OrganizationRequired checks if the authenticated user has the 'organization' role
+// It also checks if the 'orgID' path parameter matches the user's OrganizationID.
+func OrganizationRequired() gin.HandlerFunc { // <--- Updated name
 	return func(c *gin.Context) {
 		claims, exists := c.Get(UserClaimsKey)
 		if !exists {
@@ -78,30 +78,34 @@ func NGORequired() gin.HandlerFunc {
 		}
 
 		userClaims := claims.(*utils.Claims)
-		if userClaims.Role != string(models.RoleNGO) && userClaims.Role != string(models.RoleAdmin) {
-			c.JSON(http.StatusForbidden, gin.H{"error": "NGO or Admin access required"})
+		if userClaims.Role != string(models.RoleOrganization) && userClaims.Role != string(models.RoleAdmin) { // <--- Updated role
+			c.JSON(http.StatusForbidden, gin.H{"error": "Organization or Admin access required"})
 			c.Abort()
 			return
 		}
 
-		// If an Admin is accessing an NGO-specific route, they can proceed without NGOID matching.
-		// If an NGO user is accessing, their NGOID must match the one in the path.
-		if userClaims.Role == string(models.RoleNGO) {
-			paramNGOID := c.Param("ngoID")
-			if paramNGOID == "" { // For routes that don't have :ngoID in path (e.g., /ngo/profile if implemented)
+		// If an Admin is accessing an Organization-specific route, they can proceed without OrganizationID matching.
+		// If an Organization user is accessing, their OrganizationID must match the one in the path.
+		if userClaims.Role == string(models.RoleOrganization) { // <--- Updated role
+			paramOrgID := c.Param("id") // Check for generic :id first for /organization/:id routes
+			if paramOrgID == "" {
+				paramOrgID = c.Param("orgID") // Check for :orgID for /organization/:orgID/expenditures routes
+			}
+
+			if paramOrgID == "" { // For routes that don't have :id or :orgID in path (e.g., /organization/profile if implemented)
 				c.Next()
 				return
 			}
 
-			objID, err := primitive.ObjectIDFromHex(paramNGOID)
+			objID, err := primitive.ObjectIDFromHex(paramOrgID)
 			if err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid NGO ID format in path"})
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Organization ID format in path"})
 				c.Abort()
 				return
 			}
 
-			if userClaims.NGOID != objID {
-				c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: You can only manage your own NGO resources"})
+			if userClaims.OrganizationID != objID { // <--- Updated field
+				c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: You can only manage your own organization resources"})
 				c.Abort()
 				return
 			}

@@ -1,127 +1,3 @@
-// package handlers
-
-// import (
-// 	"net/http"
-
-// 	"github.com/gin-gonic/gin"
-// 	"go.mongodb.org/mongo-driver/bson/primitive"
-
-// 	"go-donation-backend/models"
-// 	"go-donation-backend/services"
-// 	"go-donation-backend/utils"
-// )
-
-// type ProjectUpdateHandler struct {
-// 	service *services.ProjectUpdateService
-// }
-
-// func NewProjectUpdateHandler(service *services.ProjectUpdateService) *ProjectUpdateHandler {
-// 	return &ProjectUpdateHandler{service: service}
-// }
-
-// func (h *ProjectUpdateHandler) CreateProjectUpdate(c *gin.Context) {
-// 	ngoIDParam := c.Param("ngoID")
-// 	ngoID, err := primitive.ObjectIDFromHex(ngoIDParam)
-// 	if err != nil {
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid NGO ID format"})
-// 		return
-// 	}
-
-// 	var update models.ProjectUpdate
-// 	if err := c.ShouldBindJSON(&update); err != nil {
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-// 		return
-// 	}
-
-// 	update.NGOID = ngoID // Ensure NGOID from path is used
-
-// 	ctx, cancel := utils.ContextWithTimeout()
-// 	defer cancel()
-
-// 	if err := h.service.CreateProjectUpdate(ctx, &update); err != nil {
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-// 		return
-// 	}
-
-// 	c.JSON(http.StatusCreated, gin.H{"message": "Project update created successfully", "update_id": update.ID.Hex()})
-// }
-
-// func (h *ProjectUpdateHandler) GetProjectUpdatesByNGO(c *gin.Context) {
-// 	ngoIDParam := c.Param("ngoID")
-// 	ngoID, err := primitive.ObjectIDFromHex(ngoIDParam)
-// 	if err != nil {
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid NGO ID format"})
-// 		return
-// 	}
-
-// 	ctx, cancel := utils.ContextWithTimeout()
-// 	defer cancel()
-
-// 	updates, err := h.service.GetProjectUpdatesByNGO(ctx, ngoID)
-// 	if err != nil {
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-// 		return
-// 	}
-
-// 	if len(updates) == 0 {
-// 		c.JSON(http.StatusNotFound, gin.H{"message": "No project updates found for this NGO"})
-// 		return
-// 	}
-
-// 	c.JSON(http.StatusOK, updates)
-// }
-
-// func (h *ProjectUpdateHandler) UpdateProjectUpdate(c *gin.Context) {
-// 	idParam := c.Param("id")
-// 	id, err := primitive.ObjectIDFromHex(idParam)
-// 	if err != nil {
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Project Update ID format"})
-// 		return
-// 	}
-
-// 	var update models.ProjectUpdate
-// 	if err := c.ShouldBindJSON(&update); err != nil {
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-// 		return
-// 	}
-
-// 	ctx, cancel := utils.ContextWithTimeout()
-// 	defer cancel()
-
-// 	if err := h.service.UpdateProjectUpdate(ctx, id, &update); err != nil {
-// 		if err.Error() == "Project update not found or no changes made" {
-// 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-// 			return
-// 		}
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-// 		return
-// 	}
-
-// 	c.JSON(http.StatusOK, gin.H{"message": "Project update updated successfully"})
-// }
-
-// func (h *ProjectUpdateHandler) DeleteProjectUpdate(c *gin.Context) {
-// 	idParam := c.Param("id")
-// 	id, err := primitive.ObjectIDFromHex(idParam)
-// 	if err != nil {
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Project Update ID format"})
-// 		return
-// 	}
-
-// 	ctx, cancel := utils.ContextWithTimeout()
-// 	defer cancel()
-
-// 	if err := h.service.DeleteProjectUpdate(ctx, id); err != nil {
-// 		if err.Error() == "Project update not found" {
-// 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-// 			return
-// 		}
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-// 		return
-// 	}
-
-//		c.JSON(http.StatusOK, gin.H{"message": "Project update deleted successfully"})
-//	}
 package handlers
 
 import (
@@ -130,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
-	"go-donation-backend/middleware" // Import middleware
+	"go-donation-backend/middleware"
 	"go-donation-backend/models"
 	"go-donation-backend/services"
 	"go-donation-backend/utils"
@@ -144,15 +20,15 @@ func NewProjectUpdateHandler(service *services.ProjectUpdateService) *ProjectUpd
 	return &ProjectUpdateHandler{service: service}
 }
 
-// CreateProjectUpdate handles the creation of a new project update by an NGO.
-// This route is protected by middleware.NGORequired() in main.go,
-// which ensures the authenticated user is an NGO/Admin and, if NGO,
-// that claims.NGOID matches the :ngoID path parameter.
+// CreateProjectUpdate handles the creation of a new project update by an Organization.
+// This route is protected by middleware.OrganizationRequired() in main.go,
+// which ensures the authenticated user is an Organization/Admin and, if Organization,
+// that claims.OrganizationID matches the :orgID path parameter.
 func (h *ProjectUpdateHandler) CreateProjectUpdate(c *gin.Context) {
-	ngoIDParam := c.Param("ngoID")
-	ngoID, err := primitive.ObjectIDFromHex(ngoIDParam)
+	orgIDParam := c.Param("orgID") // <--- Updated path parameter
+	orgID, err := primitive.ObjectIDFromHex(orgIDParam)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid NGO ID format in path"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Organization ID format in path"})
 		return
 	}
 
@@ -162,12 +38,12 @@ func (h *ProjectUpdateHandler) CreateProjectUpdate(c *gin.Context) {
 		return
 	}
 
-	// Double-check: If NGOID is provided in the body, it must match the path parameter.
-	if !update.NGOID.IsZero() && update.NGOID != ngoID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: NGO ID in request body must match NGO ID in path"})
+	// Double-check: If OrganizationID is provided in the body, it must match the path parameter.
+	if !update.OrganizationID.IsZero() && update.OrganizationID != orgID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: Organization ID in request body must match Organization ID in path"})
 		return
 	}
-	update.NGOID = ngoID // Ensure the update is linked to the NGO from the path
+	update.OrganizationID = orgID // Ensure the update is linked to the Organization from the path
 
 	ctx, cancel := utils.ContextWithTimeout()
 	defer cancel()
@@ -180,26 +56,26 @@ func (h *ProjectUpdateHandler) CreateProjectUpdate(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"message": "Project update created successfully", "update_id": update.ID.Hex()})
 }
 
-// GetProjectUpdatesByNGO retrieves project updates for a specific NGO (publicly accessible).
-func (h *ProjectUpdateHandler) GetProjectUpdatesByNGO(c *gin.Context) {
-	ngoIDParam := c.Param("ngoID")
-	ngoID, err := primitive.ObjectIDFromHex(ngoIDParam)
+// GetProjectUpdatesByOrganization retrieves project updates for a specific Organization (publicly accessible).
+func (h *ProjectUpdateHandler) GetProjectUpdatesByOrganization(c *gin.Context) { // <--- Updated function name
+	orgIDParam := c.Param("orgID") // <--- Updated path parameter
+	orgID, err := primitive.ObjectIDFromHex(orgIDParam)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid NGO ID format in path"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Organization ID format in path"})
 		return
 	}
 
 	ctx, cancel := utils.ContextWithTimeout()
 	defer cancel()
 
-	updates, err := h.service.GetProjectUpdatesByNGO(ctx, ngoID)
+	updates, err := h.service.GetProjectUpdatesByOrganization(ctx, orgID) // <--- Updated service method
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if len(updates) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"message": "No project updates found for this NGO"})
+		c.JSON(http.StatusNotFound, gin.H{"message": "No project updates found for this organization"})
 		return
 	}
 
@@ -219,7 +95,7 @@ func (h *ProjectUpdateHandler) UpdateProjectUpdate(c *gin.Context) {
 
 	claims, err := middleware.GetUserClaims(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: " + err.Error()}) // Should not happen if AuthMiddleware is before
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: " + err.Error()})
 		return
 	}
 
@@ -237,12 +113,12 @@ func (h *ProjectUpdateHandler) UpdateProjectUpdate(c *gin.Context) {
 		return
 	}
 
-	// Authorization check: If the user is an NGO, their claims.NGOID must match the existing update's NGOID.
-	// Admins bypass this specific check due to AdminRequired middleware's structure allowing Admins.
-	if claims.Role == string(models.RoleNGO) && claims.NGOID != existingUpdate.NGOID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: You can only update your own NGO's project updates"})
+	// Authorization check: If the user is an Organization, their claims.OrganizationID must match the existing update's OrganizationID.
+	if claims.Role == string(models.RoleOrganization) && claims.OrganizationID != existingUpdate.OrganizationID { // <--- Updated role and field
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: You can only update your own organization's project updates"})
 		return
 	}
+	// Admin role is allowed by the middleware.
 
 	var updateData models.ProjectUpdate
 	if err := c.ShouldBindJSON(&updateData); err != nil {
@@ -250,14 +126,14 @@ func (h *ProjectUpdateHandler) UpdateProjectUpdate(c *gin.Context) {
 		return
 	}
 
-	// Prevent changing the NGOID of an existing project update through this endpoint.
-	// If NGOID is provided in the body, it must match the original.
-	if !updateData.NGOID.IsZero() && updateData.NGOID != existingUpdate.NGOID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Cannot change NGO ID of an existing project update"})
+	// Prevent changing the OrganizationID of an existing project update through this endpoint.
+	// If OrganizationID is provided in the body, it must match the original.
+	if !updateData.OrganizationID.IsZero() && updateData.OrganizationID != existingUpdate.OrganizationID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Cannot change Organization ID of an existing project update"})
 		return
 	}
-	// Always ensure the NGOID is carried over from the existing record, even if not provided in updateData.
-	updateData.NGOID = existingUpdate.NGOID
+	// Always ensure the OrganizationID is carried over from the existing record, even if not provided in updateData.
+	updateData.OrganizationID = existingUpdate.OrganizationID
 
 	if err := h.service.UpdateProjectUpdate(ctx, id, &updateData); err != nil {
 		if err.Error() == "Project update not found or no changes made" {
@@ -302,11 +178,12 @@ func (h *ProjectUpdateHandler) DeleteProjectUpdate(c *gin.Context) {
 		return
 	}
 
-	// Authorization check: If the user is an NGO, their claims.NGOID must match the existing update's NGOID.
-	if claims.Role == string(models.RoleNGO) && claims.NGOID != existingUpdate.NGOID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: You can only delete your own NGO's project updates"})
+	// Authorization check: If the user is an Organization, their claims.OrganizationID must match the existing update's OrganizationID.
+	if claims.Role == string(models.RoleOrganization) && claims.OrganizationID != existingUpdate.OrganizationID { // <--- Updated role and field
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: You can only delete your own organization's project updates"})
 		return
 	}
+	// Admin role is allowed by the middleware.
 
 	if err := h.service.DeleteProjectUpdate(ctx, id); err != nil {
 		if err.Error() == "Project update not found" {

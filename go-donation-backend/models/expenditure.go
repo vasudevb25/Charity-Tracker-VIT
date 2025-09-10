@@ -6,11 +6,11 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// Expenditure represents how an NGO spends donated money
+// Expenditure represents how an organization spends donated money
 type Expenditure struct {
 	ID              primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
-	NGOID           primitive.ObjectID `bson:"ngo_id" json:"ngo_id" binding:"required"`
-	DonationID      primitive.ObjectID `bson:"donation_id,omitempty" json:"donation_id,omitempty"` // Optional: Link to a specific donation
+	OrganizationID  primitive.ObjectID `bson:"organization_id" json:"organization_id" binding:"required"` // <--- Updated to OrganizationID
+	DonationID      primitive.ObjectID `bson:"donation_id,omitempty" json:"donation_id,omitempty"`        // Optional: Link to a specific donation
 	Amount          float64            `bson:"amount" json:"amount" binding:"required,gte=0"`
 	Description     string             `bson:"description" json:"description"`
 	ProofURL        string             `bson:"proof_url,omitempty" json:"proof_url,omitempty"` // Link to receipt/document (IPFS concept)

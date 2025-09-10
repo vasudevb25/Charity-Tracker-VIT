@@ -38,18 +38,18 @@ func (s *CollaborationService) CreateCollaboration(ctx context.Context, collab *
 	return nil
 }
 
-// func (s *CollaborationService) GetCollaborationByID(ctx context.Context, id primitive.ObjectID) (*models.Collaboration, error) {
-// 	var collab models.Collaboration
-// 	err := s.collection.FindOne(ctx, bson.M{"_id": id}).Decode(&collab)
-// 	if err != nil {
-// 		if errors.Is(err, mongo.ErrNoDocuments) {
-// 			return nil, errors.New("collaboration not found")
-// 		}
-// 		utils.LogError(err, "Failed to get collaboration by ID")
-// 		return nil, err
-// 	}
-// 	return &collab, nil
-// }
+func (s *CollaborationService) GetCollaborationByID(ctx context.Context, id primitive.ObjectID) (*models.Collaboration, error) {
+	var collab models.Collaboration
+	err := s.collection.FindOne(ctx, bson.M{"_id": id}).Decode(&collab)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, errors.New("collaboration not found")
+		}
+		utils.LogError(err, fmt.Sprintf("Failed to get collaboration by ID %s", id.Hex()))
+		return nil, err
+	}
+	return &collab, nil
+}
 
 func (s *CollaborationService) GetCollaborations(ctx context.Context) ([]models.Collaboration, error) {
 	var collabs []models.Collaboration
@@ -67,17 +67,17 @@ func (s *CollaborationService) GetCollaborations(ctx context.Context) ([]models.
 	return collabs, nil
 }
 
-func (s *CollaborationService) GetCollaborationsByNGO(ctx context.Context, ngoID primitive.ObjectID) ([]models.Collaboration, error) {
+func (s *CollaborationService) GetCollaborationsByOrganization(ctx context.Context, organizationID primitive.ObjectID) ([]models.Collaboration, error) { // <--- Updated function name
 	var collabs []models.Collaboration
-	cursor, err := s.collection.Find(ctx, bson.M{"ngo_ids": ngoID}) // Search where ngoID is in the NGOIDs array
+	cursor, err := s.collection.Find(ctx, bson.M{"organization_ids": organizationID}) // <--- Updated field
 	if err != nil {
-		utils.LogError(err, fmt.Sprintf("Failed to get collaborations for NGO %s", ngoID.Hex()))
+		utils.LogError(err, fmt.Sprintf("Failed to get collaborations for organization %s", organizationID.Hex()))
 		return nil, err
 	}
 	defer cursor.Close(ctx)
 
 	if err = cursor.All(ctx, &collabs); err != nil {
-		utils.LogError(err, "Failed to decode collaborations for NGO")
+		utils.LogError(err, "Failed to decode collaborations for organization")
 		return nil, err
 	}
 	return collabs, nil
@@ -87,13 +87,13 @@ func (s *CollaborationService) UpdateCollaboration(ctx context.Context, id primi
 	collabData.UpdatedAt = utils.GetCurrentTime()
 	update := bson.M{
 		"$set": bson.M{
-			"ngo_ids":      collabData.NGOIDs,
-			"project_name": collabData.ProjectName,
-			"description":  collabData.Description,
-			"start_date":   collabData.StartDate,
-			"end_date":     collabData.EndDate,
-			"status":       collabData.Status,
-			"updated_at":   collabData.UpdatedAt,
+			"organization_ids": collabData.OrganizationIDs, // <--- Updated field
+			"project_name":     collabData.ProjectName,
+			"description":      collabData.Description,
+			"start_date":       collabData.StartDate,
+			"end_date":         collabData.EndDate,
+			"status":           collabData.Status,
+			"updated_at":       collabData.UpdatedAt,
 		},
 	}
 
@@ -118,17 +118,4 @@ func (s *CollaborationService) DeleteCollaboration(ctx context.Context, id primi
 		return errors.New("Collaboration not found")
 	}
 	return nil
-}
-
-func (s *CollaborationService) GetCollaborationByID(ctx context.Context, id primitive.ObjectID) (*models.Collaboration, error) {
-	var collab models.Collaboration
-	err := s.collection.FindOne(ctx, bson.M{"_id": id}).Decode(&collab)
-	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, errors.New("collaboration not found")
-		}
-		utils.LogError(err, fmt.Sprintf("Failed to get collaboration by ID %s", id.Hex()))
-		return nil, err
-	}
-	return &collab, nil
 }

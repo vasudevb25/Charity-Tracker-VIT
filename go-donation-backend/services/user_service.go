@@ -15,14 +15,14 @@ import (
 )
 
 type UserService struct {
-	collection *mongo.Collection
-	ngoService *NGOService // Dependency to check/link NGO existence
+	collection          *mongo.Collection
+	organizationService *OrganizationService // Dependency to check/link Organization existence
 }
 
-func NewUserService(client *mongo.Client, ngoService *NGOService) *UserService {
+func NewUserService(client *mongo.Client, organizationService *OrganizationService) *UserService { // <--- Updated parameter
 	return &UserService{
-		collection: config.GetCollection(client, "users"),
-		ngoService: ngoService,
+		collection:          config.GetCollection(client, "users"),
+		organizationService: organizationService,
 	}
 }
 
@@ -51,33 +51,29 @@ func (s *UserService) CreateUser(ctx context.Context, req *models.RegisterReques
 		UpdatedAt:    utils.GetCurrentTime(),
 	}
 
-	// Logic for linking NGOID or DonorID based on role
-	if req.Role == models.RoleNGO {
-		if req.NGOID == "" {
-			return nil, errors.New("ngo_id is required for NGO role")
+	// Logic for linking OrganizationID or DonorID based on role
+	if req.Role == models.RoleOrganization { // <--- Updated role name
+		if req.OrganizationID == "" {
+			return nil, errors.New("organization_id is required for organization role")
 		}
-		ngoObjID, err := primitive.ObjectIDFromHex(req.NGOID)
+		orgObjID, err := primitive.ObjectIDFromHex(req.OrganizationID)
 		if err != nil {
-			return nil, errors.New("invalid ngo_id format")
+			return nil, errors.New("invalid organization_id format")
 		}
-		// Optionally, verify NGOID exists in the NGOs collection
-		_, err = s.ngoService.GetNGOByID(ctx, ngoObjID)
+		// Optionally, verify OrganizationID exists in the Organizations collection
+		_, err = s.organizationService.GetOrganizationByID(ctx, orgObjID)
 		if err != nil {
-			return nil, fmt.Errorf("invalid ngo_id provided: %w", err)
+			return nil, fmt.Errorf("invalid organization_id provided: %w", err)
 		}
-		user.NGOID = ngoObjID
+		user.OrganizationID = orgObjID // <--- Updated field
 	} else if req.Role == models.RoleDonor {
-		// For simplicity, DonorID can be the UserID or a separate profile ID.
-		// Here, we'll link it directly to the user's ID for simplicity,
-		// but a more complex system might have a separate Donor profile.
 		if req.DonorID != "" {
 			user.DonorID = req.DonorID
 		} else {
 			user.DonorID = user.ID.Hex() // Default to user's ID as donor_id
 		}
 	} else if req.Role == models.RoleAdmin {
-		// No special linking for Admin, but ensure no NGOID/DonorID is mistakenly set
-		user.NGOID = primitive.NilObjectID
+		user.OrganizationID = primitive.NilObjectID
 		user.DonorID = ""
 	}
 

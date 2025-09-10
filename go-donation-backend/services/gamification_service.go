@@ -26,7 +26,7 @@ func NewGamificationService(client *mongo.Client) *GamificationService {
 	}
 }
 
-func (s *GamificationService) AwardDonationAchievement(ctx context.Context, donorID string, ngoID primitive.ObjectID, amount float64) {
+func (s *GamificationService) AwardDonationAchievement(ctx context.Context, donorID string, organizationID primitive.ObjectID, amount float64) { // <--- Updated parameter
 	// Simplified: Award a badge for any donation, could be more complex (e.g., amount tiers, specific causes)
 	badgeName := "Generous Donor"
 	if amount > 1000 {
@@ -37,7 +37,7 @@ func (s *GamificationService) AwardDonationAchievement(ctx context.Context, dono
 		ID:              utils.GenerateObjectID(),
 		DonorID:         donorID,
 		BadgeName:       badgeName,
-		Cause:           "", // Can derive from NGO category later
+		Cause:           "", // Can derive from Organization category later
 		AchievementDate: utils.GetCurrentTime(),
 	}
 

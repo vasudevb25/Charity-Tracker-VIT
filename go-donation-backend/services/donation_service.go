@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	// Re-added log
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -15,20 +16,18 @@ import (
 )
 
 type DonationService struct {
-	collection           *mongo.Collection
-	ngoService           *NGOService
-	emergencyFundService *EmergencyFundService
-	certificateService   *CertificateService
-	gamificationService  *GamificationService
+	collection          *mongo.Collection
+	organizationService *OrganizationService // <--- Dependency injection
+	certificateService  *CertificateService
+	gamificationService *GamificationService
 }
 
 func NewDonationService(client *mongo.Client) *DonationService {
 	return &DonationService{
-		collection:           config.GetCollection(client, "donations"),
-		ngoService:           NewNGOService(client), // Dependency injection
-		emergencyFundService: NewEmergencyFundService(client),
-		certificateService:   NewCertificateService(client),
-		gamificationService:  NewGamificationService(client),
+		collection:          config.GetCollection(client, "donations"),
+		organizationService: NewOrganizationService(client), // Dependency injection
+		certificateService:  NewCertificateService(client),
+		gamificationService: NewGamificationService(client),
 	}
 }
 
@@ -37,46 +36,46 @@ func (s *DonationService) CreateDonation(ctx context.Context, req *models.Donati
 	donationDate := utils.GetCurrentTime()
 
 	switch req.RecipientType {
-	case "single_ngo":
-		if req.NGOID.IsZero() {
-			return nil, errors.New("NGO ID is required for single NGO donation")
+	case "single_organization": // <--- Updated recipient type
+		if req.OrganizationID.IsZero() {
+			return nil, errors.New("organization ID is required for single organization donation")
 		}
 		donation := models.Donation{
-			ID:           utils.GenerateObjectID(),
-			DonorID:      req.DonorID,
-			NGOID:        req.NGOID,
-			Amount:       req.Amount,
-			Currency:     req.Currency,
-			DonationDate: donationDate,
-			Status:       "completed", // Simplified status
-			IsSplit:      false,
-			CreatedAt:    utils.GetCurrentTime(),
+			ID:             utils.GenerateObjectID(),
+			DonorID:        req.DonorID,
+			OrganizationID: req.OrganizationID, // <--- Updated field
+			Amount:         req.Amount,
+			Currency:       req.Currency,
+			DonationDate:   donationDate,
+			Status:         "completed", // Simplified status
+			IsSplit:        false,
+			CreatedAt:      utils.GetCurrentTime(),
 		}
 		_, err := s.collection.InsertOne(ctx, donation)
 		if err != nil {
-			utils.LogError(err, "Failed to create single NGO donation")
+			utils.LogError(err, "Failed to create single organization donation")
 			return nil, err
 		}
 		createdDonations = append(createdDonations, donation)
 		s.certificateService.GenerateCertificate(ctx, &donation) // Generate certificate
-		s.gamificationService.AwardDonationAchievement(ctx, req.DonorID, req.NGOID, req.Amount)
+		s.gamificationService.AwardDonationAchievement(ctx, req.DonorID, req.OrganizationID, req.Amount)
 
-	case "multiple_ngos":
+	case "multiple_organizations": // <--- Updated recipient type
 		if len(req.SplitAmounts) == 0 {
-			return nil, errors.New("split amounts are required for multiple NGO donation")
+			return nil, errors.New("split amounts are required for multiple organization donation")
 		}
 		originalDonationID := utils.GenerateObjectID()
-		for ngoIDStr, amount := range req.SplitAmounts {
-			ngoID, err := primitive.ObjectIDFromHex(ngoIDStr)
+		for orgIDStr, amount := range req.SplitAmounts {
+			orgID, err := primitive.ObjectIDFromHex(orgIDStr)
 			if err != nil {
-				utils.LogError(err, fmt.Sprintf("Invalid NGO ID in split amounts: %s", ngoIDStr))
-				return nil, fmt.Errorf("invalid NGO ID: %s", ngoIDStr)
+				utils.LogError(err, fmt.Sprintf("Invalid Organization ID in split amounts: %s", orgIDStr))
+				return nil, fmt.Errorf("invalid Organization ID: %s", orgIDStr)
 			}
 
 			donation := models.Donation{
 				ID:                 utils.GenerateObjectID(),
 				DonorID:            req.DonorID,
-				NGOID:              ngoID,
+				OrganizationID:     orgID, // <--- Updated field
 				Amount:             amount,
 				Currency:           req.Currency,
 				DonationDate:       donationDate,
@@ -92,39 +91,7 @@ func (s *DonationService) CreateDonation(ctx context.Context, req *models.Donati
 			}
 			createdDonations = append(createdDonations, donation)
 			s.certificateService.GenerateCertificate(ctx, &donation) // Generate certificate for each split
-			s.gamificationService.AwardDonationAchievement(ctx, req.DonorID, ngoID, amount)
-		}
-
-	case "emergency_fund":
-		if req.EmergencyFundID.IsZero() {
-			return nil, errors.New("emergency fund ID is required for emergency fund donation")
-		}
-		// First, create the donation record
-		donation := models.Donation{
-			ID:           utils.GenerateObjectID(),
-			DonorID:      req.DonorID,
-			NGOID:        req.EmergencyFundID, // Using EmergencyFundID as NGOID for tracking
-			Amount:       req.Amount,
-			Currency:     req.Currency,
-			DonationDate: donationDate,
-			Status:       "completed",
-			IsSplit:      false,
-			CreatedAt:    utils.GetCurrentTime(),
-		}
-		_, err := s.collection.InsertOne(ctx, donation)
-		if err != nil {
-			utils.LogError(err, "Failed to create emergency fund donation")
-			return nil, err
-		}
-		createdDonations = append(createdDonations, donation)
-		s.gamificationService.AwardDonationAchievement(ctx, req.DonorID, req.EmergencyFundID, req.Amount)
-
-		// Then, update the emergency fund's collected amount
-		err = s.emergencyFundService.AddAmountToEmergencyFund(ctx, req.EmergencyFundID, req.Amount)
-		if err != nil {
-			// Handle potential consistency issues, maybe log and proceed, or try to revert donation
-			utils.LogError(err, fmt.Sprintf("Failed to update collected amount for emergency fund %s after donation", req.EmergencyFundID.Hex()))
-			// Consider adding a compensation/rollback mechanism here in a real application
+			s.gamificationService.AwardDonationAchievement(ctx, req.DonorID, orgID, amount)
 		}
 
 	default:
@@ -163,17 +130,17 @@ func (s *DonationService) GetDonationsByDonor(ctx context.Context, donorID strin
 	return donations, nil
 }
 
-func (s *DonationService) GetDonationsByNGO(ctx context.Context, ngoID primitive.ObjectID) ([]models.Donation, error) {
+func (s *DonationService) GetDonationsByOrganization(ctx context.Context, organizationID primitive.ObjectID) ([]models.Donation, error) { // <--- Updated function name
 	var donations []models.Donation
-	cursor, err := s.collection.Find(ctx, bson.M{"ngo_id": ngoID})
+	cursor, err := s.collection.Find(ctx, bson.M{"organization_id": organizationID}) // <--- Updated field
 	if err != nil {
-		utils.LogError(err, fmt.Sprintf("Failed to get donations for NGO %s", ngoID.Hex()))
+		utils.LogError(err, fmt.Sprintf("Failed to get donations for organization %s", organizationID.Hex()))
 		return nil, err
 	}
 	defer cursor.Close(ctx)
 
 	if err = cursor.All(ctx, &donations); err != nil {
-		utils.LogError(err, "Failed to decode donations for NGO")
+		utils.LogError(err, "Failed to decode donations for organization")
 		return nil, err
 	}
 	return donations, nil

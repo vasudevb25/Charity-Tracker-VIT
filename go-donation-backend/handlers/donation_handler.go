@@ -20,94 +20,6 @@ func NewDonationHandler(service *services.DonationService) *DonationHandler {
 	return &DonationHandler{service: service}
 }
 
-// func (h *DonationHandler) CreateDonation(c *gin.Context) {
-// 	var req models.DonationRequest
-// 	if err := c.ShouldBindJSON(&req); err != nil {
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-// 		return
-// 	}
-
-// 	ctx, cancel := utils.ContextWithTimeout()
-// 	defer cancel()
-
-// 	donations, err := h.service.CreateDonation(ctx, &req)
-// 	if err != nil {
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-// 		return
-// 	}
-
-// 	c.JSON(http.StatusCreated, gin.H{"message": "Donation(s) created successfully", "donations": donations})
-// }
-
-func (h *DonationHandler) GetDonationByID(c *gin.Context) {
-	idParam := c.Param("id")
-	id, err := primitive.ObjectIDFromHex(idParam)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid donation ID format"})
-		return
-	}
-
-	ctx, cancel := utils.ContextWithTimeout()
-	defer cancel()
-
-	donation, err := h.service.GetDonationByID(ctx, id)
-	if err != nil {
-		if err.Error() == "donation not found" {
-			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, donation)
-}
-
-// func (h *DonationHandler) GetDonationsByDonor(c *gin.Context) {
-// 	donorID := c.Param("donorID")
-
-// 	ctx, cancel := utils.ContextWithTimeout()
-// 	defer cancel()
-
-// 	donations, err := h.service.GetDonationsByDonor(ctx, donorID)
-// 	if err != nil {
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-// 		return
-// 	}
-
-// 	if len(donations) == 0 {
-// 		c.JSON(http.StatusNotFound, gin.H{"message": "No donations found for this donor"})
-// 		return
-// 	}
-
-// 	c.JSON(http.StatusOK, donations)
-// }
-
-func (h *DonationHandler) GetDonationsByNGO(c *gin.Context) {
-	ngoIDParam := c.Param("ngoID")
-	ngoID, err := primitive.ObjectIDFromHex(ngoIDParam)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid NGO ID format"})
-		return
-	}
-
-	ctx, cancel := utils.ContextWithTimeout()
-	defer cancel()
-
-	donations, err := h.service.GetDonationsByNGO(ctx, ngoID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	if len(donations) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"message": "No donations found for this NGO"})
-		return
-	}
-
-	c.JSON(http.StatusOK, donations)
-}
-
 func (h *DonationHandler) CreateDonation(c *gin.Context) {
 	var req models.DonationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -168,4 +80,51 @@ func (h *DonationHandler) GetDonationsByDonor(c *gin.Context) {
 	c.JSON(http.StatusOK, donations)
 }
 
-// ... other donation functions remain public ...
+func (h *DonationHandler) GetDonationsByOrganization(c *gin.Context) { // <--- Updated function name
+	orgIDParam := c.Param("orgID") // <--- Updated path parameter
+	orgID, err := primitive.ObjectIDFromHex(orgIDParam)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Organization ID format"})
+		return
+	}
+
+	ctx, cancel := utils.ContextWithTimeout()
+	defer cancel()
+
+	donations, err := h.service.GetDonationsByOrganization(ctx, orgID) // <--- Updated service method
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if len(donations) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"message": "No donations found for this organization"})
+		return
+	}
+
+	c.JSON(http.StatusOK, donations)
+}
+
+func (h *DonationHandler) GetDonationByID(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := primitive.ObjectIDFromHex(idParam)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid donation ID format"})
+		return
+	}
+
+	ctx, cancel := utils.ContextWithTimeout()
+	defer cancel()
+
+	donation, err := h.service.GetDonationByID(ctx, id)
+	if err != nil {
+		if err.Error() == "donation not found" {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, donation)
+}

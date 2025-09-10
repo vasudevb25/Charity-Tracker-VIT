@@ -13,6 +13,7 @@
 
 // 	"go-donation-backend/config"
 // 	"go-donation-backend/handlers"
+// 	"go-donation-backend/middleware"
 // 	"go-donation-backend/services"
 // )
 
@@ -46,119 +47,139 @@
 // 	log.Println("Connected to MongoDB!")
 
 // 	// Initialize services with the MongoDB client
-// 	ngoService := services.NewNGOService(mongoClient)
+// 	organizationService := services.NewOrganizationService(mongoClient) // <--- Updated service
+// 	userService := services.NewUserService(mongoClient, organizationService)
 // 	donationService := services.NewDonationService(mongoClient)
 // 	expenditureService := services.NewExpenditureService(mongoClient)
 // 	projectUpdateService := services.NewProjectUpdateService(mongoClient)
 // 	certificateService := services.NewCertificateService(mongoClient)
 // 	gamificationService := services.NewGamificationService(mongoClient)
 // 	collaborationService := services.NewCollaborationService(mongoClient)
-// 	emergencyFundService := services.NewEmergencyFundService(mongoClient)
+// 	reportService := services.NewReportService(mongoClient) // <--- New Report Service
 
 // 	// Initialize handlers with their respective services
-// 	ngoHandler := handlers.NewNGOHandler(ngoService)
+// 	authHandler := handlers.NewAuthHandler(userService)
+// 	organizationHandler := handlers.NewOrganizationHandler(organizationService) // <--- Updated handler
 // 	donationHandler := handlers.NewDonationHandler(donationService)
 // 	expenditureHandler := handlers.NewExpenditureHandler(expenditureService)
 // 	projectUpdateHandler := handlers.NewProjectUpdateHandler(projectUpdateService)
 // 	certificateHandler := handlers.NewCertificateHandler(certificateService)
 // 	gamificationHandler := handlers.NewGamificationHandler(gamificationService)
 // 	collaborationHandler := handlers.NewCollaborationHandler(collaborationService)
-// 	emergencyFundHandler := handlers.NewEmergencyFundHandler(emergencyFundService)
+// 	reportHandler := handlers.NewReportHandler(reportService, donationService) // <--- New Report Handler
 
 // 	// Setup Gin router
 // 	router := gin.Default()
+
+// 	// --- CORS Configuration ---
 // 	router.Use(cors.New(cors.Config{
-// 		// Allow requests from your local HTML server's origin
-// 		AllowOrigins:     []string{"http://127.0.0.1:5500", "http://localhost:5500"}, // Adjust if your local server uses a different port/hostname
+// 		AllowOrigins:     []string{"http://127.0.0.1:5500", "http://localhost:5500"},
 // 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-// 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept"}, // Add any custom headers your frontend might send
+// 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 // 		ExposeHeaders:    []string{"Content-Length"},
 // 		AllowCredentials: true,
-// 		MaxAge:           12 * time.Hour, // Cache preflight requests for 12 hours
+// 		MaxAge:           12 * time.Hour,
 // 	}))
+// 	// --- End CORS Configuration ---
 
-// 	// Public Routes (e.g., for donors to view)
+// 	// Auth Routes - Publicly accessible
+// 	authRoutes := router.Group("/api/v1/auth")
+// 	{
+// 		authRoutes.POST("/register", authHandler.Register)
+// 		authRoutes.POST("/login", authHandler.Login)
+// 	}
+
+// 	// Public Routes (e.g., for general viewing by anyone, including unauthenticated users)
 // 	public := router.Group("/api/v1")
 // 	{
-// 		// NGOs
-// 		public.GET("/ngos", ngoHandler.GetNGOs)
-// 		public.GET("/ngos/:id", ngoHandler.GetNGOByID)
-// 		public.GET("/ngos/search", ngoHandler.SearchNGOs) // AI Chatbot simplified
+// 		// Organizations (viewing public organization profiles)
+// 		public.GET("/organizations", organizationHandler.GetOrganizations)           // <--- Updated route
+// 		public.GET("/organizations/:id", organizationHandler.GetOrganizationByID)    // <--- Updated route
+// 		public.GET("/organizations/search", organizationHandler.SearchOrganizations) // <--- Updated route
 
-// 		// Donations
-// 		public.GET("/donations/donor/:donorID", donationHandler.GetDonationsByDonor)
-// 		public.GET("/donations/ngo/:ngoID", donationHandler.GetDonationsByNGO)
-// 		public.GET("/donations/:id", donationHandler.GetDonationByID)
+// 		// Collaborations (viewing public collaborations)
+// 		public.GET("/collaborations", collaborationHandler.GetCollaborations)
 
-// 		// Project Updates
-// 		public.GET("/project-updates/ngo/:ngoID", projectUpdateHandler.GetProjectUpdatesByNGO)
+// 		// Leaderboard (public viewing)
+// 		public.GET("/gamification/leaderboard", gamificationHandler.GetLeaderboard)
 
-// 		// Certificates
+// 		// Project Updates (public viewing)
+// 		public.GET("/organizations/:orgID/project-updates", projectUpdateHandler.GetProjectUpdatesByOrganization) // <--- Updated route
+
+// 		// Donation certificates (public viewing, if ID is known)
 // 		public.GET("/certificates/:id", certificateHandler.GetDonationCertificate)
 // 		public.GET("/certificates/donation/:donationID", certificateHandler.GetCertificateByDonationID)
 
-// 		// Gamification
-// 		public.GET("/gamification/donor/:donorID/achievements", gamificationHandler.GetDonorAchievements)
-// 		public.GET("/gamification/leaderboard", gamificationHandler.GetLeaderboard)
-
-// 		// Collaborations
-// 		public.GET("/collaborations", collaborationHandler.GetCollaborations)
-// 		public.GET("/collaborations/ngo/:ngoID", collaborationHandler.GetCollaborationsByNGO)
-
-// 		// Emergency Funds
-// 		public.GET("/emergency-funds", emergencyFundHandler.GetEmergencyFunds)
-// 		public.GET("/emergency-funds/:id", emergencyFundHandler.GetEmergencyFundByID)
+// 		// Donations by Organization (public viewing, to show organization's received donations)
+// 		public.GET("/organizations/:orgID/donations", donationHandler.GetDonationsByOrganization) // <--- Updated route
+// 		public.GET("/donations/:id", donationHandler.GetDonationByID)                             // Get single donation, if ID is known
 // 	}
 
-// 	// NGO-specific Routes (e.g., authenticated NGO users)
-// 	ngoAuth := router.Group("/api/v1/ngo")
+// 	// Authenticated Routes - require a valid JWT
+// 	authenticatedGroup := router.Group("/api/v1")
+// 	authenticatedGroup.Use(middleware.AuthMiddleware())
 // 	{
-// 		// NGOs (for NGO to manage its own profile)
-// 		ngoAuth.POST("/register", ngoHandler.CreateNGO) // Simplified NGO Onboarding
-// 		ngoAuth.PUT("/:id", ngoHandler.UpdateNGO)
-// 		ngoAuth.DELETE("/:id", ngoHandler.DeleteNGO)
+// 		// Donor-specific Routes
+// 		donorAuth := authenticatedGroup.Group("/donor")
+// 		{
+// 			donorAuth.POST("/donate", donationHandler.CreateDonation)                                                            // Handles single and split donations
+// 			donorAuth.GET("/:donorID/donations", middleware.DonorRequired(), donationHandler.GetDonationsByDonor)                // <--- Updated route
+// 			donorAuth.GET("/:donorID/achievements", middleware.DonorRequired(), gamificationHandler.GetDonorAchievements)        // <--- Updated route
+// 			donorAuth.GET("/:donorID/transaction-history", middleware.DonorRequired(), reportHandler.GetDonorTransactionHistory) // <--- New Route
+// 		}
 
-// 		// Expenditures
-// 		ngoAuth.POST("/:ngoID/expenditures", expenditureHandler.AddExpenditure)
-// 		ngoAuth.GET("/:ngoID/expenditures", expenditureHandler.GetExpendituresByNGO)
+// 		// Organization-specific Routes (Requires Organization role and matching OrganizationID if present in path)
+// 		organizationAuth := authenticatedGroup.Group("/organization") // <--- Updated group name
+// 		{
+// 			organizationAuth.PUT("/:id", middleware.OrganizationRequired(), organizationHandler.UpdateOrganization)    // <--- Updated handler/middleware
+// 			organizationAuth.DELETE("/:id", middleware.OrganizationRequired(), organizationHandler.DeleteOrganization) // <--- Updated handler/middleware
 
-// 		// Project Updates
-// 		ngoAuth.POST("/:ngoID/project-updates", projectUpdateHandler.CreateProjectUpdate)
-// 		ngoAuth.PUT("/project-updates/:id", projectUpdateHandler.UpdateProjectUpdate)
-// 		ngoAuth.DELETE("/project-updates/:id", projectUpdateHandler.DeleteProjectUpdate)
+// 			// Expenditures
+// 			organizationAuth.POST("/:orgID/expenditures", middleware.OrganizationRequired(), expenditureHandler.AddExpenditure)               // <--- Updated handler/middleware
+// 			organizationAuth.GET("/:orgID/expenditures", middleware.OrganizationRequired(), expenditureHandler.GetExpendituresByOrganization) // <--- Updated handler/middleware
 
-// 		// Collaborations
-// 		ngoAuth.POST("/collaborations", collaborationHandler.CreateCollaboration)
-// 		ngoAuth.PUT("/collaborations/:id", collaborationHandler.UpdateCollaboration)
-// 		ngoAuth.DELETE("/collaborations/:id", collaborationHandler.DeleteCollaboration)
+// 			// Project Updates
+// 			organizationAuth.POST("/:orgID/project-updates", middleware.OrganizationRequired(), projectUpdateHandler.CreateProjectUpdate) // <--- Updated handler/middleware
+// 			organizationAuth.PUT("/project-updates/:id", middleware.OrganizationRequired(), projectUpdateHandler.UpdateProjectUpdate)     // <--- Updated handler/middleware
+// 			organizationAuth.DELETE("/project-updates/:id", middleware.OrganizationRequired(), projectUpdateHandler.DeleteProjectUpdate)  // <--- Updated handler/middleware
+
+// 			// Collaborations (Organizations can create/manage their collaborations)
+// 			organizationAuth.POST("/collaborations", middleware.OrganizationRequired(), collaborationHandler.CreateCollaboration)                   // <--- Updated handler/middleware
+// 			organizationAuth.PUT("/collaborations/:id", middleware.OrganizationRequired(), collaborationHandler.UpdateCollaboration)                // <--- Updated handler/middleware
+// 			organizationAuth.DELETE("/collaborations/:id", middleware.OrganizationRequired(), collaborationHandler.DeleteCollaboration)             // <--- Updated handler/middleware
+// 			organizationAuth.GET("/:orgID/collaborations", middleware.OrganizationRequired(), collaborationHandler.GetCollaborationsByOrganization) // <--- Updated handler/middleware
+
+// 			// Organization Audit Report
+// 			organizationAuth.GET("/:orgID/audit-report", middleware.OrganizationRequired(), reportHandler.GetOrganizationAuditReport) // <--- New Route
+// 		}
+
+// 		// Admin can manage any Organization (no specific OrganizationID match required in middleware)
+// 		adminOrganizationManagement := authenticatedGroup.Group("/admin/organizations").Use(middleware.AdminRequired()) // <--- Updated group name
+// 		{
+// 			adminOrganizationManagement.POST("", organizationHandler.CreateOrganization) // Admin can create new Organizations
+// 			adminOrganizationManagement.PUT("/:id", organizationHandler.UpdateOrganization)
+// 			adminOrganizationManagement.DELETE("/:id", organizationHandler.DeleteOrganization)
+// 		}
+
+// 		// Admin Routes (for system-level management)
+// 		// adminAuth := authenticatedGroup.Group("/admin").Use(middleware.AdminRequired())
+// 		// {
+// 		// 	// No emergency fund related routes here anymore
+// 		// 	// Add other admin-specific management routes as needed, e.g., user management, etc.
+// 		// }
 // 	}
 
-// 	// Donor-specific Routes (e.g., authenticated donors)
-// 	donorAuth := router.Group("/api/v1/donor")
-// 	{
-// 		// Donations
-// 		donorAuth.POST("/donate", donationHandler.CreateDonation) // Handles single and split donations
-// 		//donorAuth.GET("/donations/:id", donationHandler.GetDonationByID) // Already in public
+// 	// Run the server
+// 	port := os.Getenv("PORT")
+// 	if port == "" {
+// 		port = "8080" // Default port
 // 	}
-
-// 	// Admin Routes (can be integrated later with proper auth)
-// 	admin := router.Group("/api/v1/admin")
-// 	{
-// 		admin.POST("/emergency-funds", emergencyFundHandler.CreateEmergencyFund)
-// 		admin.PUT("/emergency-funds/:id", emergencyFundHandler.UpdateEmergencyFund)
-// 		admin.DELETE("/emergency-funds/:id", emergencyFundHandler.DeleteEmergencyFund)
+// 	log.Printf("Server starting on port %s", port)
+// 	if err := router.Run(":" + port); err != nil {
+// 		log.Fatalf("Server failed to start: %v", err)
 // 	}
+// }
 
-//		// Run the server
-//		port := os.Getenv("PORT")
-//		if port == "" {
-//			port = "8080" // Default port
-//		}
-//		log.Printf("Server starting on port %s", port)
-//		if err := router.Run(":" + port); err != nil {
-//			log.Fatalf("Server failed to start: %v", err)
-//		}
-//	}
 package main
 
 import (
@@ -208,26 +229,26 @@ func main() {
 	log.Println("Connected to MongoDB!")
 
 	// Initialize services with the MongoDB client
-	ngoService := services.NewNGOService(mongoClient)
-	userService := services.NewUserService(mongoClient, ngoService)
+	organizationService := services.NewOrganizationService(mongoClient)
+	userService := services.NewUserService(mongoClient, organizationService)
 	donationService := services.NewDonationService(mongoClient)
 	expenditureService := services.NewExpenditureService(mongoClient)
 	projectUpdateService := services.NewProjectUpdateService(mongoClient)
 	certificateService := services.NewCertificateService(mongoClient)
 	gamificationService := services.NewGamificationService(mongoClient)
 	collaborationService := services.NewCollaborationService(mongoClient)
-	emergencyFundService := services.NewEmergencyFundService(mongoClient)
+	reportService := services.NewReportService(mongoClient)
 
 	// Initialize handlers with their respective services
 	authHandler := handlers.NewAuthHandler(userService)
-	ngoHandler := handlers.NewNGOHandler(ngoService)
+	organizationHandler := handlers.NewOrganizationHandler(organizationService)
 	donationHandler := handlers.NewDonationHandler(donationService)
 	expenditureHandler := handlers.NewExpenditureHandler(expenditureService)
 	projectUpdateHandler := handlers.NewProjectUpdateHandler(projectUpdateService)
 	certificateHandler := handlers.NewCertificateHandler(certificateService)
 	gamificationHandler := handlers.NewGamificationHandler(gamificationService)
 	collaborationHandler := handlers.NewCollaborationHandler(collaborationService)
-	emergencyFundHandler := handlers.NewEmergencyFundHandler(emergencyFundService)
+	reportHandler := handlers.NewReportHandler(reportService, donationService)
 
 	// Setup Gin router
 	router := gin.Default()
@@ -253,71 +274,84 @@ func main() {
 	// Public Routes (e.g., for general viewing by anyone, including unauthenticated users)
 	public := router.Group("/api/v1")
 	{
-		public.GET("/ngos", ngoHandler.GetNGOs)
-		public.GET("/ngos/:id", ngoHandler.GetNGOByID)
-		public.GET("/ngos/search", ngoHandler.SearchNGOs)
-		public.GET("/emergency-funds", emergencyFundHandler.GetEmergencyFunds)
-		public.GET("/emergency-funds/:id", emergencyFundHandler.GetEmergencyFundByID)
+		// Organizations (viewing public organization profiles)
+		public.GET("/organizations", organizationHandler.GetOrganizations)
+		public.GET("/organizations/:id", organizationHandler.GetOrganizationByID)
+		public.GET("/organizations/search", organizationHandler.SearchOrganizations)
+
+		// Project Updates for a specific organization
+		public.GET("/organizations/:id/project-updates", projectUpdateHandler.GetProjectUpdatesByOrganization) // <--- Corrected to :id
+
+		// Donations by Organization
+		public.GET("/organizations/:id/donations", donationHandler.GetDonationsByOrganization) // <--- Corrected to :id
+		public.GET("/donations/:id", donationHandler.GetDonationByID)
+
+		// Collaborations (viewing public collaborations)
 		public.GET("/collaborations", collaborationHandler.GetCollaborations)
+
+		// Leaderboard (public viewing)
 		public.GET("/gamification/leaderboard", gamificationHandler.GetLeaderboard)
-		public.GET("/project-updates/ngo/:ngoID", projectUpdateHandler.GetProjectUpdatesByNGO)
+
+		// Donation certificates (public viewing, if ID is known)
 		public.GET("/certificates/:id", certificateHandler.GetDonationCertificate)
 		public.GET("/certificates/donation/:donationID", certificateHandler.GetCertificateByDonationID)
-		public.GET("/donations/ngo/:ngoID", donationHandler.GetDonationsByNGO)
-		public.GET("/donations/:id", donationHandler.GetDonationByID)
+
 	}
 
 	// Authenticated Routes - require a valid JWT
-	// Create a *gin.RouterGroup for authenticated routes and apply the AuthMiddleware to it.
-	// This allows subsequent .Group() calls on 'authenticatedGroup'.
 	authenticatedGroup := router.Group("/api/v1")
 	authenticatedGroup.Use(middleware.AuthMiddleware())
 	{
 		// Donor-specific Routes
-		donorAuth := authenticatedGroup.Group("/donor") // This is now valid
+		donorAuth := authenticatedGroup.Group("/donor")
 		{
+			// Note: The middleware.DonorRequired() might need to check c.Param("id") instead of c.Param("donorID")
+			// if you are using :id in the path. Please adjust your middleware/handlers accordingly.
 			donorAuth.POST("/donate", donationHandler.CreateDonation)
-			donorAuth.GET("/donations/donor/:donorID", middleware.DonorRequired(), donationHandler.GetDonationsByDonor)
-			donorAuth.GET("/gamification/donor/:donorID/achievements", middleware.DonorRequired(), gamificationHandler.GetDonorAchievements)
+			donorAuth.GET("/:id/donations", middleware.DonorRequired(), donationHandler.GetDonationsByDonor)                // <--- Corrected to :id
+			donorAuth.GET("/:id/achievements", middleware.DonorRequired(), gamificationHandler.GetDonorAchievements)        // <--- Corrected to :id
+			donorAuth.GET("/:id/transaction-history", middleware.DonorRequired(), reportHandler.GetDonorTransactionHistory) // <--- Corrected to :id
 		}
 
-		// NGO-specific Routes (Requires NGO role and matching NGOID if present in path)
-		ngoAuth := authenticatedGroup.Group("/ngo") // This is now valid
+		// Organization-specific Routes (Requires Organization role and matching OrganizationID if present in path)
+		organizationAuth := authenticatedGroup.Group("/organization")
 		{
-			ngoAuth.PUT("/:id", middleware.NGORequired(), ngoHandler.UpdateNGO)
-			ngoAuth.DELETE("/:id", middleware.NGORequired(), ngoHandler.DeleteNGO)
+			// All routes here should expect the organization ID as ':id'
+			organizationAuth.PUT("/:id", middleware.OrganizationRequired(), organizationHandler.UpdateOrganization)
+			organizationAuth.DELETE("/:id", middleware.OrganizationRequired(), organizationHandler.DeleteOrganization)
 
 			// Expenditures
-			ngoAuth.POST("/:ngoID/expenditures", middleware.NGORequired(), expenditureHandler.AddExpenditure)
-			ngoAuth.GET("/:ngoID/expenditures", middleware.NGORequired(), expenditureHandler.GetExpendituresByNGO)
+			organizationAuth.POST("/:id/expenditures", middleware.OrganizationRequired(), expenditureHandler.AddExpenditure)               // <--- Corrected to :id
+			organizationAuth.GET("/:id/expenditures", middleware.OrganizationRequired(), expenditureHandler.GetExpendituresByOrganization) // <--- Corrected to :id
 
 			// Project Updates
-			ngoAuth.POST("/:ngoID/project-updates", middleware.NGORequired(), projectUpdateHandler.CreateProjectUpdate)
-			ngoAuth.PUT("/project-updates/:id", middleware.NGORequired(), projectUpdateHandler.UpdateProjectUpdate)
-			ngoAuth.DELETE("/project-updates/:id", middleware.NGORequired(), projectUpdateHandler.DeleteProjectUpdate)
+			organizationAuth.POST("/:id/project-updates", middleware.OrganizationRequired(), projectUpdateHandler.CreateProjectUpdate) // <--- Corrected to :id
+			organizationAuth.PUT("/project-updates/:id", middleware.OrganizationRequired(), projectUpdateHandler.UpdateProjectUpdate)
+			organizationAuth.DELETE("/project-updates/:id", middleware.OrganizationRequired(), projectUpdateHandler.DeleteProjectUpdate)
 
-			// Collaborations (NGOs can create/manage their collaborations)
-			ngoAuth.POST("/collaborations", middleware.NGORequired(), collaborationHandler.CreateCollaboration)
-			ngoAuth.PUT("/collaborations/:id", middleware.NGORequired(), collaborationHandler.UpdateCollaboration)
-			ngoAuth.DELETE("/collaborations/:id", middleware.NGORequired(), collaborationHandler.DeleteCollaboration)
-			ngoAuth.GET("/collaborations/ngo/:ngoID", middleware.NGORequired(), collaborationHandler.GetCollaborationsByNGO)
+			// Collaborations (Organizations can create/manage their collaborations)
+			organizationAuth.POST("/collaborations", middleware.OrganizationRequired(), collaborationHandler.CreateCollaboration)
+			organizationAuth.PUT("/collaborations/:id", middleware.OrganizationRequired(), collaborationHandler.UpdateCollaboration)
+			organizationAuth.DELETE("/collaborations/:id", middleware.OrganizationRequired(), collaborationHandler.DeleteCollaboration)
+			organizationAuth.GET("/:id/collaborations", middleware.OrganizationRequired(), collaborationHandler.GetCollaborationsByOrganization) // <--- Corrected to :id
+
+			// Organization Audit Report
+			organizationAuth.GET("/:id/audit-report", middleware.OrganizationRequired(), reportHandler.GetOrganizationAuditReport) // <--- Corrected to :id
 		}
 
-		// Admin can manage any NGO (no specific NGOID match required in middleware)
-		adminNGOManagement := authenticatedGroup.Group("/admin/ngos").Use(middleware.AdminRequired()) // This is now valid
+		// Admin can manage any Organization (no specific OrganizationID match required in middleware)
+		adminOrganizationManagement := authenticatedGroup.Group("/admin/organizations").Use(middleware.AdminRequired())
 		{
-			adminNGOManagement.POST("/register", ngoHandler.CreateNGO)
-			adminNGOManagement.PUT("/:id", ngoHandler.UpdateNGO)
-			adminNGOManagement.DELETE("/:id", ngoHandler.DeleteNGO)
+			adminOrganizationManagement.POST("", organizationHandler.CreateOrganization)
+			adminOrganizationManagement.PUT("/:id", organizationHandler.UpdateOrganization)
+			adminOrganizationManagement.DELETE("/:id", organizationHandler.DeleteOrganization)
 		}
 
-		// Admin Routes
-		adminAuth := authenticatedGroup.Group("/admin").Use(middleware.AdminRequired()) // This is now valid
-		{
-			adminAuth.POST("/emergency-funds", emergencyFundHandler.CreateEmergencyFund)
-			adminAuth.PUT("/emergency-funds/:id", emergencyFundHandler.UpdateEmergencyFund)
-			adminAuth.DELETE("/emergency-funds/:id", emergencyFundHandler.DeleteEmergencyFund)
-		}
+		// Admin Routes (for system-level management) - Example for other admin routes
+		// adminAuth := authenticatedGroup.Group("/admin").Use(middleware.AdminRequired())
+		// {
+		// 	// Add other admin-specific management routes as needed, e.g., user management, etc.
+		// }
 	}
 
 	// Run the server

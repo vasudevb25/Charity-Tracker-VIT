@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-
 	"fmt"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -37,17 +36,17 @@ func (s *ExpenditureService) AddExpenditure(ctx context.Context, expenditure *mo
 	return nil
 }
 
-func (s *ExpenditureService) GetExpendituresByNGO(ctx context.Context, ngoID primitive.ObjectID) ([]models.Expenditure, error) {
+func (s *ExpenditureService) GetExpendituresByOrganization(ctx context.Context, organizationID primitive.ObjectID) ([]models.Expenditure, error) { // <--- Updated function name
 	var expenditures []models.Expenditure
-	cursor, err := s.collection.Find(ctx, bson.M{"ngo_id": ngoID})
+	cursor, err := s.collection.Find(ctx, bson.M{"organization_id": organizationID}) // <--- Updated field
 	if err != nil {
-		utils.LogError(err, fmt.Sprintf("Failed to get expenditures for NGO %s", ngoID.Hex()))
+		utils.LogError(err, fmt.Sprintf("Failed to get expenditures for organization %s", organizationID.Hex()))
 		return nil, err
 	}
 	defer cursor.Close(ctx)
 
 	if err = cursor.All(ctx, &expenditures); err != nil {
-		utils.LogError(err, "Failed to decode expenditures for NGO")
+		utils.LogError(err, "Failed to decode expenditures for organization")
 		return nil, err
 	}
 	return expenditures, nil

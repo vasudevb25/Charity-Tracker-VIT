@@ -36,19 +36,19 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 
 	// Generate JWT upon successful registration
-	token, err := utils.GenerateToken(user.ID, user.Email, string(user.Role), user.NGOID, user.DonorID)
+	token, err := utils.GenerateToken(user.ID, user.Email, string(user.Role), user.OrganizationID, user.DonorID) // <--- Updated field
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"message":  "User registered successfully",
-		"user_id":  user.ID.Hex(),
-		"role":     user.Role,
-		"ngo_id":   user.NGOID.Hex(),
-		"donor_id": user.DonorID,
-		"token":    token,
+		"message":         "User registered successfully",
+		"user_id":         user.ID.Hex(),
+		"role":            user.Role,
+		"organization_id": user.OrganizationID.Hex(), // <--- Updated field
+		"donor_id":        user.DonorID,
+		"token":           token,
 	})
 }
 
@@ -69,18 +69,18 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	token, err := utils.GenerateToken(user.ID, user.Email, string(user.Role), user.NGOID, user.DonorID)
+	token, err := utils.GenerateToken(user.ID, user.Email, string(user.Role), user.OrganizationID, user.DonorID) // <--- Updated field
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":  "Login successful",
-		"user_id":  user.ID.Hex(),
-		"role":     user.Role,
-		"ngo_id":   user.NGOID.Hex(),
-		"donor_id": user.DonorID,
-		"token":    token,
+		"message":         "Login successful",
+		"user_id":         user.ID.Hex(),
+		"role":            user.Role,
+		"organization_id": user.OrganizationID.Hex(), // <--- Updated field
+		"donor_id":        user.DonorID,
+		"token":           token,
 	})
 }

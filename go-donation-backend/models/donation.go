@@ -9,8 +9,8 @@ import (
 // Donation represents a single donation transaction
 type Donation struct {
 	ID                 primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
-	DonorID            string             `bson:"donor_id" json:"donor_id" binding:"required"` // Placeholder for user ID
-	NGOID              primitive.ObjectID `bson:"ngo_id" json:"ngo_id" binding:"required"`
+	DonorID            string             `bson:"donor_id" json:"donor_id" binding:"required"`               // Placeholder for user ID
+	OrganizationID     primitive.ObjectID `bson:"organization_id" json:"organization_id" binding:"required"` // <--- Updated to OrganizationID
 	Amount             float64            `bson:"amount" json:"amount" binding:"required,gte=0"`
 	Currency           string             `bson:"currency" json:"currency" binding:"required"`
 	DonationDate       time.Time          `bson:"donation_date" json:"donation_date"`
@@ -25,9 +25,8 @@ type DonationRequest struct {
 	DonorID         string               `json:"donor_id" binding:"required"`
 	Amount          float64              `json:"amount" binding:"required,gte=0"`
 	Currency        string               `json:"currency" binding:"required"`
-	RecipientType   string               `json:"recipient_type" binding:"required"` // "single_ngo", "multiple_ngos", "emergency_fund"
-	NGOID           primitive.ObjectID   `json:"ngo_id,omitempty"`                  // For single NGO donation
-	NGOIDs          []primitive.ObjectID `json:"ngo_ids,omitempty"`                 // For multiple NGO donation
-	SplitAmounts    map[string]float64   `json:"split_amounts,omitempty"`           // For multiple NGOs, NGO_ID -> Amount
-	EmergencyFundID primitive.ObjectID   `json:"emergency_fund_id,omitempty"`       // For emergency fund
+	RecipientType   string               `json:"recipient_type" binding:"required"` // "single_organization", "multiple_organizations"
+	OrganizationID  primitive.ObjectID   `json:"organization_id,omitempty"`         // For single organization donation
+	OrganizationIDs []primitive.ObjectID `json:"organization_ids,omitempty"`        // For multiple organizations donation
+	SplitAmounts    map[string]float64   `json:"split_amounts,omitempty"`           // For multiple organizations, Org_ID -> Amount
 }

@@ -1,136 +1,3 @@
-// package handlers
-
-// import (
-// 	"net/http"
-
-// 	"github.com/gin-gonic/gin"
-// 	"go.mongodb.org/mongo-driver/bson/primitive"
-
-// 	"go-donation-backend/models"
-// 	"go-donation-backend/services"
-// 	"go-donation-backend/utils"
-// )
-
-// type CollaborationHandler struct {
-// 	service *services.CollaborationService
-// }
-
-// func NewCollaborationHandler(service *services.CollaborationService) *CollaborationHandler {
-// 	return &CollaborationHandler{service: service}
-// }
-
-// func (h *CollaborationHandler) CreateCollaboration(c *gin.Context) {
-// 	var collab models.Collaboration
-// 	if err := c.ShouldBindJSON(&collab); err != nil {
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-// 		return
-// 	}
-
-// 	ctx, cancel := utils.ContextWithTimeout()
-// 	defer cancel()
-
-// 	if err := h.service.CreateCollaboration(ctx, &collab); err != nil {
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-// 		return
-// 	}
-
-// 	c.JSON(http.StatusCreated, gin.H{"message": "Collaboration created successfully", "collaboration_id": collab.ID.Hex()})
-// }
-
-// func (h *CollaborationHandler) GetCollaborations(c *gin.Context) {
-// 	ctx, cancel := utils.ContextWithTimeout()
-// 	defer cancel()
-
-// 	collabs, err := h.service.GetCollaborations(ctx)
-// 	if err != nil {
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-// 		return
-// 	}
-
-// 	if len(collabs) == 0 {
-// 		c.JSON(http.StatusNotFound, gin.H{"message": "No collaborations found"})
-// 		return
-// 	}
-
-// 	c.JSON(http.StatusOK, collabs)
-// }
-
-// func (h *CollaborationHandler) GetCollaborationsByNGO(c *gin.Context) {
-// 	ngoIDParam := c.Param("ngoID")
-// 	ngoID, err := primitive.ObjectIDFromHex(ngoIDParam)
-// 	if err != nil {
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid NGO ID format"})
-// 		return
-// 	}
-
-// 	ctx, cancel := utils.ContextWithTimeout()
-// 	defer cancel()
-
-// 	collabs, err := h.service.GetCollaborationsByNGO(ctx, ngoID)
-// 	if err != nil {
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-// 		return
-// 	}
-
-// 	if len(collabs) == 0 {
-// 		c.JSON(http.StatusNotFound, gin.H{"message": "No collaborations found for this NGO"})
-// 		return
-// 	}
-
-// 	c.JSON(http.StatusOK, collabs)
-// }
-
-// func (h *CollaborationHandler) UpdateCollaboration(c *gin.Context) {
-// 	idParam := c.Param("id")
-// 	id, err := primitive.ObjectIDFromHex(idParam)
-// 	if err != nil {
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Collaboration ID format"})
-// 		return
-// 	}
-
-// 	var collab models.Collaboration
-// 	if err := c.ShouldBindJSON(&collab); err != nil {
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-// 		return
-// 	}
-
-// 	ctx, cancel := utils.ContextWithTimeout()
-// 	defer cancel()
-
-// 	if err := h.service.UpdateCollaboration(ctx, id, &collab); err != nil {
-// 		if err.Error() == "Collaboration not found or no changes made" {
-// 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-// 			return
-// 		}
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-// 		return
-// 	}
-
-// 	c.JSON(http.StatusOK, gin.H{"message": "Collaboration updated successfully"})
-// }
-
-// func (h *CollaborationHandler) DeleteCollaboration(c *gin.Context) {
-// 	idParam := c.Param("id")
-// 	id, err := primitive.ObjectIDFromHex(idParam)
-// 	if err != nil {
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Collaboration ID format"})
-// 		return
-// 	}
-
-// 	ctx, cancel := utils.ContextWithTimeout()
-// 	defer cancel()
-
-// 	if err := h.service.DeleteCollaboration(ctx, id); err != nil {
-// 		if err.Error() == "Collaboration not found" {
-// 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-// 			return
-// 		}
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-// 		return
-// 	}
-
-//		c.JSON(http.StatusOK, gin.H{"message": "Collaboration deleted successfully"})
-//	}
 package handlers
 
 import (
@@ -139,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
-	"go-donation-backend/middleware" // Import middleware
+	"go-donation-backend/middleware"
 	"go-donation-backend/models"
 	"go-donation-backend/services"
 	"go-donation-backend/utils"
@@ -164,9 +31,9 @@ func containsObjectID(slice []primitive.ObjectID, val primitive.ObjectID) bool {
 }
 
 // CreateCollaboration handles the creation of a new collaboration.
-// This route is protected by middleware.AuthMiddleware() and is nested under authenticatedGroup.Group("/ngo").
-// Therefore, middleware.NGORequired() will run for this route, ensuring the user is NGO/Admin.
-// Further authorization logic for NGO participants is handled within this method.
+// This route is protected by middleware.AuthMiddleware() and is nested under authenticatedGroup.Group("/organization").
+// Therefore, middleware.OrganizationRequired() will run for this route, ensuring the user is Organization/Admin.
+// Further authorization logic for Organization participants is handled within this method.
 func (h *CollaborationHandler) CreateCollaboration(c *gin.Context) {
 	var collab models.Collaboration
 	if err := c.ShouldBindJSON(&collab); err != nil {
@@ -180,15 +47,14 @@ func (h *CollaborationHandler) CreateCollaboration(c *gin.Context) {
 		return
 	}
 
-	// Authorization check: If the user is an NGO, their claims.NGOID must be one of the participating NGO IDs in the request body.
-	// Admins bypass this specific check.
-	if claims.Role == string(models.RoleNGO) {
-		if !containsObjectID(collab.NGOIDs, claims.NGOID) {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: As an NGO, you must be a participant in the collaboration you create"})
+	// Authorization check: If the user is an Organization, their claims.OrganizationID must be one of the participating Organization IDs in the request body.
+	if claims.Role == string(models.RoleOrganization) { // <--- Updated role
+		if !containsObjectID(collab.OrganizationIDs, claims.OrganizationID) { // <--- Updated field
+			c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: As an Organization, you must be a participant in the collaboration you create"})
 			return
 		}
 	}
-	// If Admin, they can create a collaboration with any NGO IDs.
+	// If Admin, they can create a collaboration with any Organization IDs.
 
 	ctx, cancel := utils.ContextWithTimeout()
 	defer cancel()
@@ -220,28 +86,28 @@ func (h *CollaborationHandler) GetCollaborations(c *gin.Context) {
 	c.JSON(http.StatusOK, collabs)
 }
 
-// GetCollaborationsByNGO retrieves collaborations a specific NGO is part of.
-// This route is protected by middleware.NGORequired() in main.go,
+// GetCollaborationsByOrganization retrieves collaborations a specific Organization is part of.
+// This route is protected by middleware.OrganizationRequired() in main.go,
 // which handles authorization.
-func (h *CollaborationHandler) GetCollaborationsByNGO(c *gin.Context) {
-	ngoIDParam := c.Param("ngoID")
-	ngoID, err := primitive.ObjectIDFromHex(ngoIDParam)
+func (h *CollaborationHandler) GetCollaborationsByOrganization(c *gin.Context) { // <--- Updated function name
+	orgIDParam := c.Param("orgID") // <--- Updated path parameter
+	orgID, err := primitive.ObjectIDFromHex(orgIDParam)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid NGO ID format in path"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Organization ID format in path"})
 		return
 	}
 
 	ctx, cancel := utils.ContextWithTimeout()
 	defer cancel()
 
-	collabs, err := h.service.GetCollaborationsByNGO(ctx, ngoID)
+	collabs, err := h.service.GetCollaborationsByOrganization(ctx, orgID) // <--- Updated service method
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if len(collabs) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"message": "No collaborations found for this NGO"})
+		c.JSON(http.StatusNotFound, gin.H{"message": "No collaborations found for this organization"})
 		return
 	}
 
@@ -279,9 +145,9 @@ func (h *CollaborationHandler) UpdateCollaboration(c *gin.Context) {
 		return
 	}
 
-	// Authorization check: If the user is an NGO, their claims.NGOID must be one of the participating NGO IDs in the existing collaboration.
-	if claims.Role == string(models.RoleNGO) {
-		if !containsObjectID(existingCollab.NGOIDs, claims.NGOID) {
+	// Authorization check: If the user is an Organization, their claims.OrganizationID must be one of the participating Organization IDs in the existing collaboration.
+	if claims.Role == string(models.RoleOrganization) { // <--- Updated role
+		if !containsObjectID(existingCollab.OrganizationIDs, claims.OrganizationID) { // <--- Updated field
 			c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: You are not a participant in this collaboration"})
 			return
 		}
@@ -294,10 +160,10 @@ func (h *CollaborationHandler) UpdateCollaboration(c *gin.Context) {
 		return
 	}
 
-	// Additional check: If an NGO is updating, they cannot remove themselves from the NGOIDs list.
-	if claims.Role == string(models.RoleNGO) {
-		if !containsObjectID(collabData.NGOIDs, claims.NGOID) {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: You cannot remove your NGO from a collaboration you are updating"})
+	// Additional check: If an Organization is updating, they cannot remove themselves from the OrganizationIDs list.
+	if claims.Role == string(models.RoleOrganization) { // <--- Updated role
+		if !containsObjectID(collabData.OrganizationIDs, claims.OrganizationID) { // <--- Updated field
+			c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: You cannot remove your Organization from a collaboration you are updating"})
 			return
 		}
 	}
@@ -352,9 +218,9 @@ func (h *CollaborationHandler) DeleteCollaboration(c *gin.Context) {
 		return
 	}
 
-	// Authorization check: If the user is an NGO, their claims.NGOID must be one of the participating NGO IDs in the existing collaboration.
-	if claims.Role == string(models.RoleNGO) {
-		if !containsObjectID(existingCollab.NGOIDs, claims.NGOID) {
+	// Authorization check: If the user is an Organization, their claims.OrganizationID must be one of the participating Organization IDs in the existing collaboration.
+	if claims.Role == string(models.RoleOrganization) { // <--- Updated role
+		if !containsObjectID(existingCollab.OrganizationIDs, claims.OrganizationID) { // <--- Updated field
 			c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: You are not a participant in this collaboration"})
 			return
 		}

@@ -19,63 +19,15 @@ func NewExpenditureHandler(service *services.ExpenditureService) *ExpenditureHan
 	return &ExpenditureHandler{service: service}
 }
 
-// func (h *ExpenditureHandler) AddExpenditure(c *gin.Context) {
-// 	ngoIDParam := c.Param("ngoID")
-// 	ngoID, err := primitive.ObjectIDFromHex(ngoIDParam)
-// 	if err != nil {
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid NGO ID format"})
-// 		return
-// 	}
-
-// 	var expenditure models.Expenditure
-// 	if err := c.ShouldBindJSON(&expenditure); err != nil {
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-// 		return
-// 	}
-
-// 	expenditure.NGOID = ngoID // Ensure NGOID from path is used
-
-// 	ctx, cancel := utils.ContextWithTimeout()
-// 	defer cancel()
-
-// 	if err := h.service.AddExpenditure(ctx, &expenditure); err != nil {
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-// 		return
-// 	}
-
-// 	c.JSON(http.StatusCreated, gin.H{"message": "Expenditure added successfully", "expenditure_id": expenditure.ID.Hex()})
-// }
-
-// func (h *ExpenditureHandler) GetExpendituresByNGO(c *gin.Context) {
-// 	ngoIDParam := c.Param("ngoID")
-// 	ngoID, err := primitive.ObjectIDFromHex(ngoIDParam)
-// 	if err != nil {
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid NGO ID format"})
-// 		return
-// 	}
-
-// 	ctx, cancel := utils.ContextWithTimeout()
-// 	defer cancel()
-
-// 	expenditures, err := h.service.GetExpendituresByNGO(ctx, ngoID)
-// 	if err != nil {
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-// 		return
-// 	}
-
-// 	if len(expenditures) == 0 {
-// 		c.JSON(http.StatusNotFound, gin.H{"message": "No expenditures found for this NGO"})
-// 		return
-// 	}
-
-// 	c.JSON(http.StatusOK, expenditures)
-// }
-
+// AddExpenditure handles the creation of a new expenditure record by an Organization.
+// This route is protected by middleware.OrganizationRequired() in main.go,
+// which ensures the authenticated user is an Organization/Admin and, if Organization,
+// that claims.OrganizationID matches the :orgID path parameter.
 func (h *ExpenditureHandler) AddExpenditure(c *gin.Context) {
-	ngoIDParam := c.Param("ngoID")
-	ngoID, err := primitive.ObjectIDFromHex(ngoIDParam)
+	orgIDParam := c.Param("orgID") // <--- Updated path parameter
+	orgID, err := primitive.ObjectIDFromHex(orgIDParam)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid NGO ID format in path"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Organization ID format in path"})
 		return
 	}
 
@@ -85,14 +37,12 @@ func (h *ExpenditureHandler) AddExpenditure(c *gin.Context) {
 		return
 	}
 
-	// Double-check: If NGOID is provided in the body, it must match the path parameter.
-	// This prevents an authenticated NGO user from accidentally logging an expenditure
-	// for a different NGO by putting a different NGOID in the JSON body.
-	if !expenditure.NGOID.IsZero() && expenditure.NGOID != ngoID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: NGO ID in request body must match NGO ID in path"})
+	// Double-check: If OrganizationID is provided in the body, it must match the path parameter.
+	if !expenditure.OrganizationID.IsZero() && expenditure.OrganizationID != orgID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: Organization ID in request body must match Organization ID in path"})
 		return
 	}
-	expenditure.NGOID = ngoID // Ensure the expenditure is linked to the NGO from the path
+	expenditure.OrganizationID = orgID // Ensure the expenditure is linked to the Organization from the path
 
 	ctx, cancel := utils.ContextWithTimeout()
 	defer cancel()
@@ -105,28 +55,28 @@ func (h *ExpenditureHandler) AddExpenditure(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"message": "Expenditure added successfully", "expenditure_id": expenditure.ID.Hex()})
 }
 
-// GetExpendituresByNGO retrieves all expenditure records for a specific NGO.
-// This route is protected by middleware.NGORequired() in main.go,
+// GetExpendituresByOrganization retrieves all expenditure records for a specific Organization.
+// This route is protected by middleware.OrganizationRequired() in main.go,
 // which handles authorization.
-func (h *ExpenditureHandler) GetExpendituresByNGO(c *gin.Context) {
-	ngoIDParam := c.Param("ngoID")
-	ngoID, err := primitive.ObjectIDFromHex(ngoIDParam)
+func (h *ExpenditureHandler) GetExpendituresByOrganization(c *gin.Context) { // <--- Updated function name
+	orgIDParam := c.Param("orgID") // <--- Updated path parameter
+	orgID, err := primitive.ObjectIDFromHex(orgIDParam)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid NGO ID format in path"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Organization ID format in path"})
 		return
 	}
 
 	ctx, cancel := utils.ContextWithTimeout()
 	defer cancel()
 
-	expenditures, err := h.service.GetExpendituresByNGO(ctx, ngoID)
+	expenditures, err := h.service.GetExpendituresByOrganization(ctx, orgID) // <--- Updated service method
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if len(expenditures) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"message": "No expenditures found for this NGO"})
+		c.JSON(http.StatusNotFound, gin.H{"message": "No expenditures found for this organization"})
 		return
 	}
 
