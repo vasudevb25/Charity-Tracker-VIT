@@ -1,0 +1,171 @@
+package handlers
+
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+
+	"go-donation-backend/middleware"
+	"go-donation-backend/models"
+	"go-donation-backend/services"
+	"go-donation-backend/utils"
+)
+
+type DonationHandler struct {
+	service *services.DonationService
+}
+
+func NewDonationHandler(service *services.DonationService) *DonationHandler {
+	return &DonationHandler{service: service}
+}
+
+// func (h *DonationHandler) CreateDonation(c *gin.Context) {
+// 	var req models.DonationRequest
+// 	if err := c.ShouldBindJSON(&req); err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+// 		return
+// 	}
+
+// 	ctx, cancel := utils.ContextWithTimeout()
+// 	defer cancel()
+
+// 	donations, err := h.service.CreateDonation(ctx, &req)
+// 	if err != nil {
+// 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+// 		return
+// 	}
+
+// 	c.JSON(http.StatusCreated, gin.H{"message": "Donation(s) created successfully", "donations": donations})
+// }
+
+func (h *DonationHandler) GetDonationByID(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := primitive.ObjectIDFromHex(idParam)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid donation ID format"})
+		return
+	}
+
+	ctx, cancel := utils.ContextWithTimeout()
+	defer cancel()
+
+	donation, err := h.service.GetDonationByID(ctx, id)
+	if err != nil {
+		if err.Error() == "donation not found" {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, donation)
+}
+
+// func (h *DonationHandler) GetDonationsByDonor(c *gin.Context) {
+// 	donorID := c.Param("donorID")
+
+// 	ctx, cancel := utils.ContextWithTimeout()
+// 	defer cancel()
+
+// 	donations, err := h.service.GetDonationsByDonor(ctx, donorID)
+// 	if err != nil {
+// 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+// 		return
+// 	}
+
+// 	if len(donations) == 0 {
+// 		c.JSON(http.StatusNotFound, gin.H{"message": "No donations found for this donor"})
+// 		return
+// 	}
+
+// 	c.JSON(http.StatusOK, donations)
+// }
+
+func (h *DonationHandler) GetDonationsByNGO(c *gin.Context) {
+	ngoIDParam := c.Param("ngoID")
+	ngoID, err := primitive.ObjectIDFromHex(ngoIDParam)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid NGO ID format"})
+		return
+	}
+
+	ctx, cancel := utils.ContextWithTimeout()
+	defer cancel()
+
+	donations, err := h.service.GetDonationsByNGO(ctx, ngoID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if len(donations) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"message": "No donations found for this NGO"})
+		return
+	}
+
+	c.JSON(http.StatusOK, donations)
+}
+
+func (h *DonationHandler) CreateDonation(c *gin.Context) {
+	var req models.DonationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// --- Authorization Check for DonorID ---
+	claims, err := middleware.GetUserClaims(c)
+	if err != nil { // This should ideally not happen if AuthMiddleware is working
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	// If a Donor is making a donation, ensure req.DonorID matches their claims.DonorID
+	// If an Admin is making a donation, they can specify any donor_id.
+	if claims.Role == string(models.RoleDonor) && req.DonorID != claims.DonorID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: You can only make donations as yourself"})
+		return
+	}
+	// If donor_id is empty in request, auto-fill it with claims.DonorID for convenience
+	if req.DonorID == "" {
+		req.DonorID = claims.DonorID
+	}
+	// --- End Authorization Check ---
+
+	ctx, cancel := utils.ContextWithTimeout()
+	defer cancel()
+
+	donations, err := h.service.CreateDonation(ctx, &req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"message": "Donation(s) created successfully", "donations": donations})
+}
+
+// GetDonationsByDonor (already protected by middleware.DonorRequired() in main.go)
+func (h *DonationHandler) GetDonationsByDonor(c *gin.Context) {
+	donorID := c.Param("donorID")
+	// middleware.DonorRequired already ensures donorID in path matches claims.DonorID or user is admin
+
+	ctx, cancel := utils.ContextWithTimeout()
+	defer cancel()
+
+	donations, err := h.service.GetDonationsByDonor(ctx, donorID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if len(donations) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"message": "No donations found for this donor"})
+		return
+	}
+
+	c.JSON(http.StatusOK, donations)
+}
+
+// ... other donation functions remain public ...
