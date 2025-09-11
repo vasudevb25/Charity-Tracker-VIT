@@ -29,7 +29,7 @@ func (h *DonationHandler) CreateDonation(c *gin.Context) {
 
 	// --- Authorization Check for DonorID ---
 	claims, err := middleware.GetUserClaims(c)
-	if err != nil { // This should ideally not happen if AuthMiddleware is working
+	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
@@ -49,19 +49,31 @@ func (h *DonationHandler) CreateDonation(c *gin.Context) {
 	ctx, cancel := utils.ContextWithTimeout()
 	defer cancel()
 
+	// Create donation
 	donations, err := h.service.CreateDonation(ctx, &req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"message": "Donation(s) created successfully", "donations": donations})
+	// Call blockchain function to simulate sending data to blockchain
+	transactionHash, err := services.SendToBlockchain(req.DonorID, req.OrganizationID.Hex(), req.Amount, req.Currency)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send transaction to blockchain"})
+		return
+	}
+
+	// Return success message with transaction hash
+	c.JSON(http.StatusCreated, gin.H{
+		"message":          "Donation(s) created successfully",
+		"donations":        donations,
+		"transaction_hash": transactionHash,
+	})
 }
 
 // GetDonationsByDonor (already protected by middleware.DonorRequired() in main.go)
 func (h *DonationHandler) GetDonationsByDonor(c *gin.Context) {
 	donorID := c.Param("donorID")
-	// middleware.DonorRequired already ensures donorID in path matches claims.DonorID or user is admin
 
 	ctx, cancel := utils.ContextWithTimeout()
 	defer cancel()
@@ -80,8 +92,8 @@ func (h *DonationHandler) GetDonationsByDonor(c *gin.Context) {
 	c.JSON(http.StatusOK, donations)
 }
 
-func (h *DonationHandler) GetDonationsByOrganization(c *gin.Context) { // <--- Updated function name
-	orgIDParam := c.Param("orgID") // <--- Updated path parameter
+func (h *DonationHandler) GetDonationsByOrganization(c *gin.Context) {
+	orgIDParam := c.Param("orgID")
 	orgID, err := primitive.ObjectIDFromHex(orgIDParam)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Organization ID format"})
@@ -91,7 +103,7 @@ func (h *DonationHandler) GetDonationsByOrganization(c *gin.Context) { // <--- U
 	ctx, cancel := utils.ContextWithTimeout()
 	defer cancel()
 
-	donations, err := h.service.GetDonationsByOrganization(ctx, orgID) // <--- Updated service method
+	donations, err := h.service.GetDonationsByOrganization(ctx, orgID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
