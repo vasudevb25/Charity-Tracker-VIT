@@ -24,7 +24,7 @@ func NewExpenditureHandler(service *services.ExpenditureService) *ExpenditureHan
 // which ensures the authenticated user is an Organization/Admin and, if Organization,
 // that claims.OrganizationID matches the :orgID path parameter.
 func (h *ExpenditureHandler) AddExpenditure(c *gin.Context) {
-	orgIDParam := c.Param("orgID") // <--- Updated path parameter
+	orgIDParam := c.Param("id") // <--- Updated path parameter
 	orgID, err := primitive.ObjectIDFromHex(orgIDParam)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Organization ID format in path"})
